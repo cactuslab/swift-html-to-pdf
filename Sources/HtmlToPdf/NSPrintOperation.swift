@@ -8,6 +8,7 @@
 #if os(macOS)
 import Foundation
 import WebKit
+import Dependencies
 
 extension Document {
     /// Prints a ``Document`` to PDF with the given configuration.
@@ -65,18 +66,27 @@ extension Sequence<Document> {
         createDirectories: Bool = true
     ) async throws {
         try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+            // First add all tasks to the group
             for document in self {
                 taskGroup.addTask {
-                    let webView = try await WebViewPool.shared.acquireWithRetry()
-                    try await document.print(
-                        configuration: configuration,
-                        createDirectories: createDirectories,
-                        using: webView
-                    )
-                    await WebViewPool.shared.release(webView)
+                    @Dependency(\.webViewPool) var webViewPool
+                    let webView = try await webViewPool.acquireWithRetry(8, 0.2)
+                    do {
+                        try await document.print(
+                            configuration: configuration,
+                            createDirectories: createDirectories,
+                            using: webView
+                        )
+                    } catch {
+                        // Always release the webView even if printing fails
+                        await webViewPool.releaseWebView(webView)
+                        throw error
+                    }
+                    await webViewPool.releaseWebView(webView)
                 }
-                try await taskGroup.waitForAll()
             }
+            // Then wait for all tasks to complete
+            try await taskGroup.waitForAll()
         }
     }
 }

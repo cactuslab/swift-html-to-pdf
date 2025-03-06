@@ -10,6 +10,7 @@
 import Foundation
 import UIKit
 import WebKit
+import Dependencies
 
 extension Document {
     
@@ -66,6 +67,13 @@ extension String {
             Swift.print("Regex error: \(error.localizedDescription)")
             return false
         }
+    }
+}
+
+extension Error {
+    /// Determines if the error is a cancellation error
+    var isCancellationError: Bool {
+        (self as? CancellationError) != nil
     }
 }
 
@@ -132,19 +140,33 @@ private class DocumentWKRenderer: NSObject, WKNavigationDelegate {
     
     @MainActor
     public func print(timeout: TimeInterval = 30) async throws {
-        let webView = try await WebViewPool.shared.acquireWithRetry()
+        @Dependency(\.webViewPool) var webViewPool
+        let webView = try await webViewPool.acquireWithRetry(8, 0.2)
         webView.navigationDelegate = self
         
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            webView.loadHTMLString(document.html, baseURL: configuration.baseURL)
-            
-            timeoutTask = Task {
-                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                if self.continuation != nil {
-                    throw NSError(domain: "DocumentWKRenderer", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebView loading timed out"])
+        do {
+            return try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+                webView.loadHTMLString(document.html, baseURL: configuration.baseURL)
+                
+                timeoutTask = Task {
+                    do {
+                        try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                        if self.continuation != nil {
+                            throw NSError(domain: "DocumentWKRenderer", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebView loading timed out"])
+                        }
+                    } catch {
+                        if !error.isCancellationError {
+                            self.continuation?.resume(throwing: error)
+                            await self.cleanup(webView: webView)
+                        }
+                    }
                 }
             }
+        } catch {
+            // If an error occurs, make sure to release the webView
+            await cleanup(webView: webView)
+            throw error
         }
     }
     
@@ -175,8 +197,9 @@ private class DocumentWKRenderer: NSObject, WKNavigationDelegate {
     
     @MainActor
     private func cleanup(webView: WKWebView) async {
+        @Dependency(\.webViewPool) var webViewPool
         webView.navigationDelegate = nil
-        await WebViewPool.shared.release(webView)
+        await webViewPool.releaseWebView(webView)
     }
 }
 

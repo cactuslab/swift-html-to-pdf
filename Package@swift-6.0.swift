@@ -9,6 +9,7 @@ extension String {
 
 extension Target.Dependency {
     static var htmlToPdf: Self { .target(name: .htmlToPdf) }
+    static var dependencies: Self { .product(name: "Dependencies", package: "swift-dependencies") }
 }
 
 let package = Package(
@@ -20,13 +21,20 @@ let package = Package(
             targets: [.htmlToPdf]
         )
     ],
+    dependencies: [
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.8.0"),
+    ],
     targets: [
         .target(
-            name: .htmlToPdf),
+            name: .htmlToPdf,
+            dependencies: [
+                .dependencies
+            ]
+        ),
         .testTarget(
             name: .htmlToPdf + "Tests",
             dependencies: [.htmlToPdf]
         )
     ],
-    swiftLanguageVersions: [.version("6")]
+    swiftLanguageModes: [.v6]
 )

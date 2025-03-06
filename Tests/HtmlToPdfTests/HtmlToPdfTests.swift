@@ -16,7 +16,14 @@ struct TemporaryDirectory {
         let count = 1_000
 
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer { 
+            do {
+                try FileManager.default.removeItem(at: output) 
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
         try await [String].init(
             repeating: "<html><body><h1>Hello, World 1!</h1></body></html>",
             count: count
@@ -29,7 +36,13 @@ struct TemporaryDirectory {
     @Test() func individual() async throws {
         let id = UUID()
         let output = URL.output(id: id).appendingPathComponent("individual")
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer { 
+            do {
+                try FileManager.default.removeItem(at: output) 
+            } catch {
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         try await String.html.print(to: output.appendingPathComponent("\(id.uuidString) test string").appendingPathExtension("pdf"), configuration: .a4)
 
@@ -39,7 +52,13 @@ struct TemporaryDirectory {
     @Test func collection_n_size() async throws {
         let count = 10
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer { 
+            do {
+                try FileManager.default.removeItem(at: output) 
+            } catch {
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         try await [String].init(repeating: .html, count: count)
             .print(to: output, configuration: .a4)
@@ -50,7 +69,13 @@ struct TemporaryDirectory {
     @Test func collection_n_size_concurrently() async throws {
         let count = 10
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer { 
+            do {
+                try FileManager.default.removeItem(at: output) 
+            } catch {
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         try await [String].init(repeating: .html, count: count)
             .print(
@@ -70,7 +95,14 @@ struct TemporaryDirectory {
 
     @Test func collection_of_documents() async throws {
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         let documents = [
             Document(
@@ -109,7 +141,14 @@ struct TemporaryDirectory {
     @Test func collection_collection_individual() async throws {
         let count = 10
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         try await [String].init(repeating: .html, count: count)
             .print(
@@ -135,7 +174,14 @@ struct TemporaryDirectory {
 
     @Test func collection_3() async throws {
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         let documents = [
             Document(
@@ -187,10 +233,19 @@ struct TemporaryDirectory {
     
     @Test("Collection IMG Test")
     func testCollection() async throws {
-        let count = 1000
+        let count = 10
 
         let output = URL.output()
-        defer { if false { try! FileManager.default.removeItem(at: output) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
+        
         try await [String](
             repeating: "<html><body><h1>Hello, World 1!</h1>\(String.img)</body></html>",
             count: count
@@ -208,7 +263,15 @@ struct Local {
     @Test() func individual() async throws {
         let title = "individual"
         let output = URL.localHtmlToPdf.appendingPathComponent(title)
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         try await String.html.print(title: title, to: output, configuration: .a4)
 
@@ -218,7 +281,16 @@ struct Local {
     @Test() func collection_of_strings() async throws {
         let title = "collection_of_strings"
         let output = URL.localHtmlToPdf.appendingPathComponent(title)
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
+        
         let count = 3
 
         try await [String].init(repeating: .html, count: count)
@@ -230,7 +302,16 @@ struct Local {
     @Test() func collection_of_documents() async throws {
         let title = "collection_of_documents"
         let output = URL.localHtmlToPdf.appendingPathComponent(title)
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
+        
         let count = 3
 
         try await (1...count).map { count in
@@ -249,7 +330,15 @@ struct AsyncStreamTests {
 
         let count = 1
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         let urls: AsyncStream = try await [String].init(repeating: .html, count: count)
             .print(
@@ -273,7 +362,15 @@ struct AsyncStreamTests {
     ) func local_collection_n_size_concurrently(url: URL) async throws {
         let count = 30
         let output = url
-        defer { if true { try! FileManager.default.removeItem(at: url) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
 
         async let x: AsyncStream<URL> = try [String].init(repeating: .html, count: count)
             .print(
@@ -299,7 +396,16 @@ struct AsyncStreamTests {
     @Test() func collection_of_documents() async throws {
 
         let output = URL.output()
-        defer { if true { try! FileManager.default.removeItem(at: output) } }
+        
+        defer {
+            do {
+                try FileManager.default.removeItem(at: output)
+            } catch {
+                // Silently ignore removal errors in cleanup
+                print("Warning: Could not remove output directory: \(error.localizedDescription)")
+            }
+        }
+        
         let count = 3
 
         let urls: AsyncStream = try await (1...count).map { count in

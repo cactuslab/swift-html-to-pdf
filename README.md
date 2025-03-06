@@ -122,6 +122,45 @@ The example below will correctly render the image in the HTML, assuming the `[..
 * [coenttb/pointfree-web](https://www.github.com/coenttb/pointfree-html): Foundational tools for web development in Swift, forked from  [pointfreeco/swift-web](https://www.github.com/pointfreeco/swift-web).
 * [coenttb/pointfree-server](https://www.github.com/coenttb/pointfree-html): Foundational tools for server development in Swift, forked from  [pointfreeco/swift-web](https://www.github.com/pointfreeco/swift-web).
 
+## Known Issues
+
+### WebKit Process Assertion Warnings
+
+When running tests or using this library in a command-line environment, you may see warnings like:
+
+```
+Error acquiring assertion: <Error Domain=RBSServiceErrorDomain Code=1 
+"(target is not running or doesn't have entitlement com.apple.runningboard.assertions.webkit AND 
+originator doesn't have entitlement com.apple.runningboard.assertions.webkit)" 
+UserInfo={NSLocalizedFailureReason=(target is not running or doesn't have entitlement 
+com.apple.runningboard.assertions.webkit AND originator doesn't have entitlement 
+com.apple.runningboard.assertions.webkit)}>
+```
+
+#### Why This Happens
+
+These warnings occur because:
+
+1. **WebKit in Non-UI Contexts**: This library uses WKWebView to render HTML to PDF, which is designed for use in UI applications, not command-line or test environments.
+
+2. **RunningBoard Service**: macOS uses RunningBoard Service (RBS) to manage process lifecycles. When WebKit processes start in a non-UI context, RBS tries to create process assertions but cannot because the process lacks the required entitlements.
+
+3. **Missing Entitlements**: The `com.apple.runningboard.assertions.webkit` entitlement is needed to properly manage WebKit processes, but is only available to proper UI applications.
+
+#### Impact
+
+Despite these warnings, the library should still function correctly. These messages are warnings, not errors, and don't prevent the PDF generation from working.
+
+#### Potential Solutions
+
+If these warnings are problematic:
+
+1. **Use in a UI Application**: Use this library in a proper UI application context where entitlements can be properly assigned.
+
+2. **Create Test Mocks**: For testing, create mock implementations that don't use real WebKit processes.
+
+3. **Custom Test Runner**: Run tests inside a properly entitlemented app bundle rather than directly.
+
 ## Installation
 
 To install the package, add the following line to your `Package.swift` file:

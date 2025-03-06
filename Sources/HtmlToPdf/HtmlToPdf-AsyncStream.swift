@@ -35,6 +35,7 @@ extension Sequence<Document> where Self: Sendable {
         AsyncStream<URL> { continuation in
             Task { [documents = self] in
                 try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+                    // First add all tasks to the group
                     for document in documents {
                         taskGroup.addTask {
                             try await document.print(
@@ -43,8 +44,9 @@ extension Sequence<Document> where Self: Sendable {
                             )
                             continuation.yield(document.fileUrl)
                         }
-                        try await taskGroup.waitForAll()
                     }
+                    // Then wait for all tasks to complete
+                    try await taskGroup.waitForAll()
                 }
                 continuation.finish()
             }
