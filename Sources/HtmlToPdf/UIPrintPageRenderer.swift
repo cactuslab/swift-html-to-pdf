@@ -77,6 +77,30 @@ extension Error {
     }
 }
 
+class CustomRenderer : UIPrintPageRenderer {
+    
+    private let width: CGFloat
+    private let height: CGFloat
+    
+    override var paperRect: CGRect {
+        return CGRect(x: 0, y: 0, width: width, height: height)
+    }
+                      
+    override var printableRect: CGRect {
+        return CGRect(x: 0, y: 0, width: width, height: height)
+    }
+    
+    override var numberOfPages: Int {
+        return 1
+    }
+    
+    init(width: CGFloat, height: CGFloat) {
+        self.width = width
+        self.height = height
+    }
+    
+}
+
 extension Document {
     
     /// Internal method to print the document using a custom UIPrintFormatter.
@@ -93,13 +117,11 @@ extension Document {
         if createDirectories {
             try FileManager.default.createDirectory(at: self.fileUrl.deletingPathExtension().deletingLastPathComponent(), withIntermediateDirectories: true)
         }
-
-        let renderer = UIPrintPageRenderer()
+        
+        let renderer = CustomRenderer(width: configuration.paperSize.width, height: configuration.paperSize.height)
         renderer.addPrintFormatter(printFormatter, startingAtPageAt: 0)
 
-        let paperRect = CGRect(origin: .zero, size: configuration.paperSize)
-        renderer.setValue(NSValue(cgRect: paperRect), forKey: "paperRect")
-        renderer.setValue(NSValue(cgRect: configuration.printableRect), forKey: "printableRect")
+        let paperRect = CGRect(origin: .zero, size: CGSize(width: configuration.paperSize.width, height: configuration.paperSize.height))
 
         let pdfData = NSMutableData()
         UIGraphicsBeginPDFContextToData(pdfData, paperRect, nil)
@@ -173,8 +195,31 @@ private class DocumentWKRenderer: NSObject, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         Task {
             do {
+                let result = try await webView.evaluateJavaScript("""
+                    (function() {
+                        return {
+                            width: document.body.scrollWidth,
+                            height: document.body.scrollHeight
+                        };
+                    })()
+                    """)
+                
+                let conf: PDFConfiguration
+                if let dict = result as? [String: Any],
+                   let width = dict["width"] as? CGFloat,
+                   let height = dict["height"] as? CGFloat {
+                    webView.frame = CGRect(origin: .zero, size: webView.scrollView.contentSize)
+                    webView.layoutSubviews()
+                    
+                    let ratio = width / CGSize.a4().width
+                    
+                    conf = PDFConfiguration(margins: .init(top: 0, left: 0, bottom: 0, right: 0), paperSize: CGSize(width: CGSize.a4().width, height: height / ratio), baseURL: configuration.baseURL, orientation: configuration.orientation)
+                } else {
+                    conf = PDFConfiguration(margins: .init(top: 0, left: 0, bottom: 0, right: 0), paperSize: webView.scrollView.contentSize, baseURL: configuration.baseURL, orientation: configuration.orientation)
+                }
+                
                 try await document.print(
-                    configuration: configuration,
+                    configuration: conf,
                     createDirectories: createDirectories,
                     printFormatter: webView.viewPrintFormatter()
                 )
